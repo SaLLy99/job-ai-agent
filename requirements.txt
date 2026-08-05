@@ -1,0 +1,8 @@
+streamlit
+requests
+beautifulsoup4
+google-genai
+openai
+langgraph
+langgraph-checkpoint-sqlite
+python-dotenv
