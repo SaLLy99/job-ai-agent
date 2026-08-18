@@ -185,33 +185,18 @@ REJECTED_COMPANIES = {"toptal", "proxify"}
 
 
 def _infer_reject_rules(cv: Dict[str, Any], primary_skills: List[str]) -> Dict[str, List[str]]:
-    """Infer rejection rules from CV and primary skills."""
+    """Infer rejection rules from CV and primary skills.
+
+    Only reject if there's strong evidence the user doesn't work with a technology.
+    Be conservative - it's better to show a few extra jobs than miss good ones.
+    """
     skills_lower = [s.lower() for s in cv.get("skills", [])]
 
     reject_languages = []
     reject_frameworks = []
     reject_keywords = []
 
-    known_backend_languages = {"java", "python", "go", "rust", "kotlin", "c#", "scala"}
-    known_frontend_languages = {"javascript", "typescript"}
-    known_other_languages = {"php", "ruby", "swift", "objective-c"}
-
-    user_backend = known_backend_languages & set(skills_lower)
-    user_frontend = known_frontend_languages & set(skills_lower)
-
-    if user_backend and not user_frontend:
-        if "php" not in skills_lower:
-            reject_languages.extend(["php"])
-        if "ruby" not in skills_lower:
-            reject_languages.extend(["ruby"])
-
-    if "laravel" not in skills_lower and "php" not in skills_lower:
-        reject_frameworks.append("laravel")
-    if "rails" not in skills_lower and "ruby" not in skills_lower:
-        reject_frameworks.append("rails")
-    if "sharepoint" not in skills_lower:
-        reject_frameworks.append("sharepoint")
-
+    # Only reject specific companies known for bad experiences
     reject_keywords.extend(["toptal", "proxify"])
 
     return {

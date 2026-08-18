@@ -20,6 +20,7 @@ from .hiringcafe import HiringCafeCrawler
 from .reed import ReedCrawler
 from .remoteio import RemoteIOCrawler
 from .cryptojobslist import CryptoJobsListCrawler
+from .micro1 import Micro1Crawler
 
 # Per-crawler limits: ensure balanced representation
 PER_CRAWLER_MIN = 3
@@ -53,6 +54,7 @@ class JobCrawlerManager:
             ReedCrawler(),
             RemoteIOCrawler(),
             CryptoJobsListCrawler(),
+            Micro1Crawler(),
         ]
 
         self.session = session
@@ -71,13 +73,24 @@ class JobCrawlerManager:
         for crawler in self.crawlers:
             source = crawler.__class__.__name__
             try:
+                # Try with both keywords and location
                 result = crawler.crawl(keywords=keywords, location=location)
                 if result is None:
                     result = []
             except TypeError:
                 try:
+                    # Try with keywords only
                     result = crawler.crawl(keywords=keywords)
                     if result is None:
+                        result = []
+                except TypeError:
+                    try:
+                        # Try with no arguments
+                        result = crawler.crawl()
+                        if result is None:
+                            result = []
+                    except Exception as e:
+                        print(f"[CRAWL] {source} FAILED: {e}")
                         result = []
                 except Exception as e:
                     print(f"[CRAWL] {source} FAILED: {e}")

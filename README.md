@@ -36,6 +36,7 @@ A production-grade job search agent that aggregates jobs from 20+ sources, ranks
 | CryptoJobsList | Crypto/Web3 |
 | NodeSk | Remote Jobs |
 | Workway | Remote Jobs |
+| Micro1 | AI Training Jobs |
 
 ## Tech Stack
 

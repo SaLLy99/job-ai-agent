@@ -45,7 +45,7 @@ class JobicyCrawler:
                 "title": title,
                 "company": company,
                 "url": url,
-                "location": location,
+                "location": location or "Worldwide",
                 "description": description[:2000],
                 "source": "jobicy",
                 "salary_min": salary_min,

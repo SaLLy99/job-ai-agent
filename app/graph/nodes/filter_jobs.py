@@ -160,6 +160,17 @@ def _job_location_matches(job, desired_location):
     if not job_location.strip() and any(w in job_text for w in ["remote", "worldwide", "global"]):
         return True
 
+    # Check if job is from a remote-focused source
+    source = job.get("source", "")
+    remote_sources = {
+        "remoteok", "weworkremotely", "wwr", "remotive",
+        "workingnomads", "himalayas", "jobicy", "trulyremote",
+        "nodesk", "remotehub", "remoterocketship", "remoteio",
+        "levelsfyi", "levels_fyi",
+    }
+    if source in remote_sources:
+        return True
+
     # Job has a specific location (e.g., "Berlin, Germany") - reject for "anywhere" query
     return False
 
@@ -398,14 +409,19 @@ def filter_jobs(state: AgentState):
                         "nodesk", "remotehub", "remoterocketship", "remoteio",
                         "levelsfyi", "levels_fyi",
                     }
+                    # Allow jobs from remote sources even if detected as office
                     if is_worldwide_loc or source in remote_sources:
                         pass  # Allow through
                     else:
                         drop_reason = f"work_type(office!=remote)"
                         work_type_dropped += 1
                 elif job_work_type == "remote_geo":
-                    drop_reason = f"work_type(geo_restricted_remote)"
-                    work_type_dropped += 1
+                    # Allow geo-restricted remote for worldwide queries
+                    if is_worldwide_query:
+                        pass
+                    else:
+                        drop_reason = f"work_type(geo_restricted_remote)"
+                        work_type_dropped += 1
             elif desired_work_type == "hybrid":
                 if job_work_type not in ("hybrid", "remote"):
                     drop_reason = f"work_type({job_work_type}!={desired_work_type})"

@@ -44,7 +44,7 @@ class WorkingNomadsCrawler:
                 "title": title,
                 "company": company,
                 "url": url,
-                "location": location,
+                "location": location or "Worldwide",
                 "description": description,
                 "source": "workingnomads",
                 "tags": tags,

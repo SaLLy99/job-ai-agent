@@ -1,5 +1,6 @@
 from graph.state import AgentState
 from db.repository import Repository
+from collections import Counter
 
 
 def explain_jobs(state: AgentState):
@@ -21,6 +22,12 @@ def explain_jobs(state: AgentState):
         state['final_response'] = f"I found 1 job that matches your request."
     else:
         state['final_response'] = f"I found {count} jobs that match your request."
+
+    # Add source breakdown
+    source_counts = Counter(job.get("source", "Unknown") for job in jobs_to_show)
+    if source_counts:
+        source_breakdown = ", ".join(f"{src}: {cnt}" for src, cnt in source_counts.most_common())
+        state['final_response'] += f"\n\nSources: {source_breakdown}"
 
     for job in jobs_to_show:
         breakdown = job.get("match_breakdown", {})
@@ -46,6 +53,7 @@ def explain_jobs(state: AgentState):
             f"Location: {location_status}\n"
             f"Salary: {salary_status}\n"
             f"Remote: {work_type_status}\n"
+            f"Source: {job.get('source', 'Unknown')}\n"
             f"Confidence: {confidence}%"
         )
 

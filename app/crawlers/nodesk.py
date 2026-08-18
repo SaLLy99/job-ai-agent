@@ -39,6 +39,8 @@ class NodeSkCrawler:
                 "title": title,
                 "company": "",
                 "url": href,
+                "location": "Worldwide",
+                "description": "",
                 "source": "nodesk"
             })
 

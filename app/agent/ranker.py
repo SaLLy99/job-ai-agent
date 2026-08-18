@@ -2,6 +2,8 @@ import os
 import json
 import re
 from openai import OpenAI
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from graph.nodes.filter_jobs import (
     _detect_job_work_type,
     _is_worldwide_job,
@@ -70,15 +72,16 @@ class Ranker:
             identity_alignment = calculate_identity_alignment(identity, job)
             alignment_score = identity_alignment["alignment_score"]
 
-            # 60% similarity threshold - skip jobs below this
-            if has_identity and alignment_score < 20:
+            # Skip jobs below 10% alignment threshold - be more inclusive
+            if has_identity and alignment_score < 10:
                 skipped_low_alignment += 1
                 continue
 
             score = 0
 
+            # Identity alignment is the primary signal - give it high weight
             if has_identity:
-                score += alignment_score * 0.3
+                score += alignment_score * 0.6
 
             title_kw_hits = 0
             desc_kw_hits = 0
@@ -140,8 +143,16 @@ class Ranker:
             if score > 0:
                 score_clamped = min(100, max(1, int(score)))
                 
-                # 60% similarity threshold - convert to percentage
-                similarity_pct = min(100, max(0, int(score * 2)))  # Scale score to percentage
+                # Calculate similarity as a combination of alignment and keyword matches
+                # This gives users a more intuitive "match percentage"
+                keyword_score = 0
+                if specific_keywords:
+                    title_hits = sum(1 for kw in specific_keywords if word_match(kw, title))
+                    desc_hits = sum(1 for kw in specific_keywords if word_match(kw, description))
+                    keyword_score = min(50, (title_hits * 15) + (desc_hits * 5))
+                
+                # Combine alignment (0-50) and keyword match (0-50) for final similarity
+                similarity_pct = min(100, max(0, int(alignment_score * 0.5 + keyword_score)))
 
                 opportunity = calculate_opportunity_score(job, profile, parsed_query)
 
@@ -192,7 +203,7 @@ class Ranker:
         )
 
         return {
-            "results": scored[:10]
+            "results": scored[:25]
         }
 
 
@@ -290,66 +301,24 @@ class Ranker:
                 return heuristic_candidates
 
 
-            prompt = f"""
-You are a job ranking engine.
+            prompt = f"""You are a job ranking engine. Rank jobs from best to worst match.
 
 PROFESSIONAL IDENTITY:
-{json.dumps(extract_identity(profile, parsed_query))}
+{json.dumps(extract_identity(profile, parsed_query), indent=2)}
 
-USER PROFILE:
-{json.dumps(profile)}
+SEARCH QUERY: {query}
 
-SEARCH QUERY:
-{query}
-
-EXTRACTED CRITERIA:
-{json.dumps(parsed_query or {})}
-
-JOBS TO RANK:
-{json.dumps(jobs_for_llm)}
-
-TASK:
-Rank jobs from best to worst match for THIS professional identity.
-
-SCORING RULES:
-- Primary signal: Does the job match the professional headline and primary skills?
-- A job requiring PHP/Ruby/SharePoint when the user is a Java Backend Engineer = REJECT (score 0)
-- A job matching primary skills (Java, Spring Boot, Microservices) = HIGH score
-- A job matching secondary skills (AWS, Kubernetes, AI) = MEDIUM score
-- Location, salary, seniority are secondary signals
-
-NEVER rank a job highly just because it mentions ANY of the user's skills.
-The job must align with the professional identity as a whole.
+JOBS TO RANK (return ALL of them, ranked):
+{json.dumps(jobs_for_llm, indent=2)}
 
 RULES:
-- Never infer missing information.
-- If a field is unknown (salary, location), keep it as null.
-- Do not guess salary from seniority, company, or market averages.
-- Do not guess location from company HQ or timezone.
-- If salary info is missing, leave salary_min/salary_max as null.
+- Return exactly these jobs, ranked best to worst
+- Score 0-100 based on match quality
+- Never infer missing info (salary, location)
+- If job requires skills user doesn't have, lower the score
 
-Return ONLY valid JSON.
-
-FORMAT:
-
-{{
-  "results": [
-    {{
-      "title": "",
-      "company": "",
-      "url": "",
-      "description": "",
-      "source": "",
-      "location": "",
-      "salary_min": null,
-      "salary_max": null,
-      "currency": null,
-      "score": 0,
-      "why": ""
-    }}
-  ]
-}}
-"""
+Return ONLY a JSON object with "results" array. Each item needs: title, company, url, source, location, score, why.
+Keep "why" to 1 sentence max."""
 
 
             try:
@@ -445,7 +414,7 @@ FORMAT:
                         )
 
                     return {
-                        "results": results[:10]
+                        "results": results[:25]
                     }
 
 
